@@ -13,4 +13,12 @@ yum remove tomcat
 yum deplist tomcat
 //装软件的时候，会有中断，让用户选择是否要继续，可以用 -y 来应答所有的 yes
 yum -y install tomcat
+//显示软件包的描述信息和概要信息
+yum info tomcat
+//yum update
+yum update
+//升级某一个软件包
+yum update tomcat
+//检查可更新的程序
+yum check-update
 ```
