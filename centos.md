@@ -22,3 +22,4 @@ yum update tomcat
 //检查可更新的程序
 yum check-update
 ```
+https://qizhanming.com/blog/2018/08/06/how-to-install-nginx-on-centos-7
