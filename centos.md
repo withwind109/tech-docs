@@ -55,4 +55,12 @@ systemctl unmask <服务项名称>
 //重新读取所有服务项，修改、添加、删除服务项之后需要执行以下命令。
 systemctl daemon-reload
 ```
+
+### firewall-cmd防火墙配置
+
+Linux上新用的防火墙软件，跟iptables差不多的工具。
+firewalld自身并不具备防火墙的功能，而是和iptables一样需要通过内核的netfilter来实现，也就是说firewalld和 iptables一样，他们的作用都是用于维护规则，而真正使用规则干活的是内核的netfilter，只不过firewalld和iptables的结 构以及使用方法不一样罢了。
+
+https://wangchujiang.com/linux-command/c/firewall-cmd.html
+
 https://qizhanming.com/blog/2018/08/06/how-to-install-nginx-on-centos-7
