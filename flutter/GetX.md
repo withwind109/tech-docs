@@ -56,7 +56,7 @@ number.value = 12.0;
 对于其他数据类型需要调用`update`或者变量方法更新，如下：
 
 ```dart
-user.update((value) {  value?.name = "123";});
+user.update((value) { value?.name = "123";});
 ```
 
 或者使用变量名方法重新赋值一个对象，比如变量名为`user`则可使用`user()`方法进行更新:
@@ -81,12 +81,23 @@ Obx(() => Text("${count.value}"))
 * `debounce` 防抖，即延迟一定时间调用，且在规定时间内只有最后一次改变会触发回调。如设置时间为 1 秒，发生了3次数据变化，每次间隔500毫秒，则只有最后一次变化会触发回调。
 * `interval` 时间间隔内只有最后一次变化会触发回调。如设置时间间隔为1秒，则在1秒内无论点击多少次都只有最后一次会触发回调，然后进入下一次的时间间隔。
 
-  这里创建一个名为MyController的控制器，内部有count字段，我们想要在点击时将其增加1。
-  ```dart
-  class TestController extends GetxController {
-    var count = 0.obs; // obs将变量转化为可观察对象
-  }
-  ```
+这里创建一个名为MyController的控制器，内部有count字段，我们想要在点击时将其增加1。
+```dart
+class TestController extends GetxController {
+  var count = 0.obs; // obs将变量转化为可观察对象
+}
+```
+
+```dart
+// 每次`count`变化时调用。
+ever(count, (newValue) => print("$newValue has been changed"));
+// 只有在变量count在第一次被改变时才会被调用。
+once(count, (newValue) => print("$newValue was changed once"));
+// 防DDos - 每当用户停止输入1秒时调用，例如。
+debounce(count, (newValue) => print("debouce$newValue"), time: Duration(seconds: 1));
+// 忽略1秒内的所有变化，只有最后一次会触发回调。
+interval(count, (newValue) => print("interval $newValue"), time: Duration(seconds: 1));
+```
 
 在页面中使用自定义的控制器
 
@@ -120,87 +131,230 @@ class GetXControllerExample extends StatelessWidget {
 }
 ```
 
-一个使用列表的示例：
+一个使用列表的示例，使用的是Obx来监听变更：
 
-
-### 2、路由管理：
-  GetX 对Flutter的路由进行了封装，提供了更易用的API，比如通过Get.to进行页面跳转，不需要上下文context。
-
-   ```dart
-  //跳转到NextPage页面
-  Get.to(NextPage());
-  ```
-  其中，`NextPage()`就是你想跳转的目标页面的构造函数。使用这种结构，你不需要提供任何上下文—`BuildContext`对象。
-
-  此外，GetX 也可以提供一些更复杂的页面跳转操作。例如，可以等待进入下一页面之后返回一个结果：
 ```dart
-var data = await Get.to(NextPage());
-```
+class Item {
+  final String title;
 
-还可以使用命名路由：
-```dart
-Get.toNamed("/Next");
-```
-在跳转前，需要在GetMaterialApp中定义好名称及对应的页面：
-```dart
-void main() { 
-   GetMaterialApp( 
-     getPages: [ 
-       GetPage(name: '/next', page: ()=> NextPage()),
-     ], 
-     home: FirstPage(),
-   ); 
+  Item({required this.title});
 }
-```
 
-你还可以使用Get.back() 跳转到上一页：
-```dart
-Get.back();
-```
+class TestController extends GetxController {
+  var listItems = List<Item>.empty(growable: true).obs;
 
-使用Get.off() 关闭所有旧页面并跳转到新页面：
-```dart
-Get.off(NextPage());
-```
+  void addItem(Item item) {
+    listItems.add(item);
+  }
 
-使用Get.offAll() 清除所有的页面堆栈并跳转到新页面：
-```dart
-Get.offAll(NextPage());
-```
+  void removeItem(Item item) {
+    listItems.remove(item);
+  }
+}
 
-传递参数至下一页面：
-```dart
-Get.to(NextPage(), arguments:"Hello GetX");
-```
+class GetXControllerExample extends StatelessWidget {
+  final TestController testController = Get.put(TestController());
+  final textFieldController = TextEditingController();
 
-在下一页面中获取参数：
-```dart
-class NextPage extends StatelessWidget {
   @override
-  Widget build(context) {
-    final String text = Get.arguments;
-    ...
+  Widget build(BuildContext context) {
+    return Scaffold(
+        appBar: AppBar(
+          title: const Text('demo'),
+        ),
+        body: Column(
+          children: <Widget>[
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Row(
+                children: <Widget>[
+                  Container(
+                    width: 220,
+                    child: TextField(
+                      controller: textFieldController,
+                      decoration: InputDecoration(
+                        labelText: 'Enter text here',
+                      ),
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      testController
+                          .addItem(Item(title: textFieldController.text));
+                    },
+                    child: Text(
+                      'Button',
+                      style: TextStyle(
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+                child: Obx(() => ListView.builder(
+                    itemCount: testController.listItems.length,
+                    itemBuilder: (context, index) {
+                      return ListTile(
+                        title: Text(testController.listItems[index].title),
+                        trailing: ElevatedButton(
+                          child: const Text("delete"),
+                          onPressed: () {
+                            testController
+                                .removeItem(testController.listItems[index]);
+                          },
+                        ),
+                      );
+                    }))),
+          ],
+        ));
   }
 }
 ```
 
-其中每一个步骤都不需要BuildContext对象，所以无论你在哪里，你都可以使用这些功能而不会有任何影响。 
+也可以使用`GetBuilder`和`update`的方式来更新状态：
+
+```dart
+...
+void addItem(Item item) {
+  listItems.add(item);
+  update();
+}
+
+void removeItem(Item item) {
+  listItems.remove(item);
+  update();
+}
+...
+
+...
+Expanded(
+  child: GetBuilder<TestController>(
+  init: testController,
+  builder: (controller) {
+    return ListView.builder(
+        itemCount: controller.listItems.length,
+        itemBuilder: (context, index) {
+          return ListTile(
+            title: Text(controller.listItems[index].title),
+            trailing: ElevatedButton(
+              child: const Text("delete"),
+              onPressed: () {
+                controller.removeItem(controller.listItems[index]);
+              },
+            ),
+          );
+        });
+  },
+))
+...
+```
+
+### 2、路由管理：
+
+在 Flutter 中进行页面跳转就是通过路由实现，GetX 提供了`普通路由`和`别名路由`。
+
+#### 普通路由
+
+```dart
+Get.to(CounterPage()); // to进入下一个页面
+Get.to(CounterPage(), arguments: count); // arguments可以传参，下个页面通过dynamic args = Get.arguments;获取参数
+Get.off(CounterPage()); // 进入下一个界面，且导航没有返回
+Get.offAll(CounterPage()); // 进入下一个界面并取消之前的所有路由
+Get.back(); // 返回
+Get.back(result: 'success'); // 返回传参 ，获取返回参数var data = await Get.to(CounterPage());
+```
+
+#### 别名路由
+
+GetX 对Flutter的路由进行了封装，提供了更易用的API。
+
+
+```dart
+
+// 首先创建一个`RouteMaps`（名字自己定义）的类，用于统一配置路由映射关系：
+class RouteGet {  
+  // name  
+  static const String first = "/first";
+  static const String second = "/second";
+  // maps  定义别名与页面的映射关系。
+  static final List<GetPage> getPages = [    
+      GetPage(name: '/first', page: () => FirstRoute()),
+      GetPage(name: '/second', page: () => SecondRoute()),
+  ];
+}
+
+// 然后在`GetMaterialApp`进行`initialRoute`和`getPages`的配置，即初始页面和路由映射集合:
+class MyApp extends StatelessWidget {
+  const MyApp({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return GetMaterialApp(
+        title: 'Flutter Demo',
+        initialRoute: RouteGet.first,
+        getPages: RouteGet.getPages
+  }
+}
+
+// 路由跳转:
+Get.toNamed(RouteGet.second);
+// 路由传参:
+Get.toNamed(RouteGet.login, arguments: {"name":"a"});
+// 直接在路由别名后面跟参数
+Get.toNamed("/second?device=android&id=3&name=Enzo");
+// 接收参数:
+// 通过 arguments 进行传参，在下个页面接收参数直接使用 Get.arguments 获取到传递过来的参数
+dynamic args = Get.arguments;
+// 使用别名后 Url 传递参数的方式，使用 Get.parameters 获取参数：
+Get.parameters['device'];
+```
+
+#### Bindings:
+
+Bindings 主要是配合路由进行使用，当通过 GetX 路由进入页面时，会自动调用 dependencies 方法， 可以在这里进行依赖关系的注册\初始化等。
+
+```dart
+class CounterBinding implements Bindings {
+  @override
+  void dependencies() {
+    Get.lazyPut<CounterController>(() => CounterController());
+    Get.put<Service>(() => Api());
+  }
+}
+
+// 普通路由使用：
+Get.to(CounterPage(), binding: CounterBinding());
+
+// 别名路由使用，在GetPage中设置路由对应的Bindings
+// map 
+static final List<GetPage> getPages = [
+  GetPage(name: counter, page: () => CounterPage(), binding: CounterBinding())
+];
+```
 
 ### 3、依赖管理：
 
 GetX对依赖管理提供了很好的解决方案，可以非常方便地获取数据或者对象。 依赖管理主要是通过Get.put(), Get.find()和Get.lazyPut()等方法来实现的。第一次使用某个 Controller 时需要使用`Get.put()`进行初始化，后续再使用同一个 Controller 就不需要再进行初始化，直接通过`Get.find()`来获取实例就可以了。
 
 
-1、Get.put():
+#### 1、Get.put():
+
 这是一个类注入的实例，你可以在任何地方注入你需要的类，创建一个新的实例。
 ```dart
 void main() {
-  Get.put(Controller());
+  Get.put<CounterController>(CounterController());
+  Get.put<CounterController>(CounterController(), permanent: true); // permanent:是否永久，默认false当实例不再使用时会进行销毁，true则会一直保留 
+  Get.put<CounterController>(CounterController, tag: "counter"); // 标签，用于区分同一个类不同实例
+
   runApp(App());
 }
+
 ```
 
-2、Get.find():
+#### 2、Get.find():
+
 我们可以通过 `Get.find()` 找到已经注入的类的实例。
 ```dart
 class SomeClass extends StatelessWidget {
@@ -212,17 +366,48 @@ class SomeClass extends StatelessWidget {
 }
 ```
 
-3、Get.lazyPut():
+#### 3、Get.lazyPut():
+
 lazyPut() 方法和 put() 方法含义相同，但和 put() 方法不同点在于，当使用 lazyPut() 时，只有在你真正用到的时候才会初始化这个类的实例。
 
 ```dart
 void main() {
   Get.lazyPut(() => Controller());
+  Get.lazyPut<CounterController>(  () { return CounterController();}, tag: Math.random().toString(), fenix:true );
+  // fenix：类似'永久'，不同的是，当不使用时，实例会被丢弃，但当再次需要使用时，Get会重新创建实例
+  // tag：标签，用于区分同一个类不同实例。
   runApp(App());
 }
 ```
-
 这样就可以将需要使用的实例延迟初始化，当真正使用的时候再加载，以提高性能。 
+
+#### 4、Get.putAsync():
+可以异步注册一个实例。用于某些实例需要异步初始化时使用，比如`SharedPreferences`:
+
+```dart
+Get.putAsync<SharedPreferences>(() async {  
+  final prefs = await SharedPreferences.getInstance();  
+  await prefs.setInt('counter', 12345); 
+  return prefs;
+});
+
+```
+同样拥有`permanent`和`tag`参数，作用一样。
+
+#### 5、Get.create():
+
+`create`与`put`使用方式上基本类似，不同的是它的`permanent`默认为`true`。
+
+```dart
+Get.create<CounterController>(() => CounterController());
+```
+
+6、Get.delete():
+移除注入的依赖实例，大部分情况下不需要手动调用该方法，GetX 内部会自动处理，当不需要时自动移除。
+
+```dart
+Get.delete<CounterController>();
+```
 
 
 ### 4、GetXController
