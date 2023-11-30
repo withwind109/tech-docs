@@ -213,7 +213,7 @@ class GetXControllerExample extends StatelessWidget {
 }
 ```
 
-也可以使用`GetBuilder`和`update`的方式来更新状态：
+也可以使用`GetBuilder`和`update`的方式组合来更新状态：
 
 ```dart
 ...
@@ -250,6 +250,75 @@ Expanded(
 ))
 ...
 ```
+
+GetBuilder` 组件提供了 `tag` 和 `id` 这两个参数，这两个参数的作用主要在于控制器实例的访问和更新机制的管理。
+
+1. `tag` 参数的作用：
+
+`tag` 参数用于在 GetX 的依赖注入系统中标识控制器的实例。默认情况下，当你使用 `Get.put()` 或者 `Get.lazyPut()` 方法将控制器放入 GetX 依赖注入系统中时，它们会被存储在一个默认的空标签下。然而，如果你想在同一个应用中使用多个相同类型的控制器实例，你可以为它们指定不同的 `tag`。
+
+举例来说，如果你有两个页面都需要 `UserController` 的实例，但是对于不同的用户，你可以这样操作：
+
+```dart
+Get.put(UserController(user: User1), tag: 'user1');
+Get.put(UserController(user: User2), tag: 'user2');
+```
+
+在 UI 中使用 `GetBuilder` 获取特定的控制器实例：
+
+```dart
+GetBuilder<UserController>(
+  tag: 'user1',
+  builder: (controller) {
+    // 这里的 controller 是 tag 为 'user1' 的 UserController 实例
+  },
+);
+```
+
+
+2. `id` 参数的作用：
+
+`id` 参数用于 `GetBuilder`，它与 `update()` 方法结合起来，让你可以更精细地控制哪些 `GetBuilder` 需要重新构建。不是每次状态改变都需要更新所有的 `GetBuilder`，有时候你只想更新特定的那个 `GetBuilder`。
+
+在控制器内部，当你调用 `update()` 方法时，你可以将 `id` 作为参数传递给它：
+
+这里是一个如何使用 `id` 的例子：
+
+```dart
+class CounterController extends GetxController {
+  int counter = 0;
+
+  void increment() {
+    counter++;
+    update([‘counter’]); // 只更新具有 'counter' id 的 GetBuilder
+  }
+}
+
+class MyHomePage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        GetBuilder<CounterController>(
+          id: 'counter', // 给这个 GetBuilder 指定一个 id
+          builder: (_) {
+            return Text('You have pressed the button ${_.counter} times');
+          },
+        ),
+        GetBuilder<CounterController>(
+          // 由于我们没有给这个 GetBuilder 指定 id 'counter'
+          // 它不会在调用 update(['counter']) 时更新
+          builder: (_) {
+            return Text('This will not update on increment');
+          },
+        ),
+      ],
+    );
+  }
+}
+```
+
+在此例中，`increment` 函数通过传递 `id` 列表 `['counter']` 调用 `update` 方法，确保只有设置了 `'counter'` `id` 的 GetBuilder 会被重建。这样，当你有一个大型页面，其中只有少量小部分需要更新时，这可以避免不必要的 UI 重建，提升应用性能。
 
 ### 2、路由管理：
 
@@ -455,6 +524,7 @@ class MyController extends GetxController{
 }
 ```
 4. onDelete 和onDetached：
+
 这两个生命周期函数只在GetBuilder中有。onDelete当控制器被永久删除时调用，清除控制器和变量。onDetached当一个控制器不再被找到时时)会调用这个事件。它是最后一个被调用的方法，用于清理控制器占用的资源。
 
 下面是一个使用`GetxController`生命周期方法的例子：
