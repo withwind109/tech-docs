@@ -403,6 +403,136 @@ static final List<GetPage> getPages = [
 ];
 ```
 
+#### 钩子
+
+ 在使用GetX路由管理时，`GetPage`类提供了多种钩子选项，它们让你可以在页面导航周期中执行自定义逻辑。这些钩子包括：
+
+- `bindings`: 让你可以提供一个或多个`Bindings`，用于依赖注入，并将实例绑定到路由。
+- `middleWare`: 中间件列表，允许你在路由跳转发生前后进行干预。
+- `onPageCalled`: 当页面被调用时触发的回调。
+- `onPageBuilt`: 当页面被GetX构建时触发的回调。
+- `onPageDisposed`: 当页面被销毁时触发的回调。
+- `popGesture`: 允许你控制页面是否支持iOS风格的滑动返回手势。
+
+下面是一个如何使用这些钩子的示例：
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+
+class MyBinding extends Bindings {
+  @override
+  void dependencies() {
+    // 注入依赖
+  }
+}
+
+class MyMiddleware extends GetMiddleware {
+  @override
+  RouteSettings? redirect(String? route) {
+    // 可以在这里根据条件重定向到其他页面
+    return super.redirect(route);
+  }
+  // 更多方法，比如onPageCalled, onPageBuilt, onPageDisposed等
+}
+
+GetPage(
+  name: '/textPage',
+  page: () => TextPage(),
+  binding: MyBinding(),
+  middlewares: [MyMiddleware()],
+  popGesture: true,
+  onPageCalled: (params) {
+    // 页面被调用时的逻辑
+  },
+  onPageBuilt: (page) {
+    // 页面构建完成时的逻辑
+  },
+  onPageDisposed: () {
+    // 页面销毁时的逻辑
+  },
+);
+```
+
+在上面的代码中：
+
+- 使用`binding`属性，我们可以为路由设置`Bindings`，这在页面需要依赖注入的场景中很有用。
+- 使用`middlewares`属性，我们可以给路由设置一个或多个`GetMiddleware`对象，可以用来监听和操作路由事件，如重定向、日志记录和权限检查等。
+- `popGesture`属性允许我们设置iOS风格的滑动返回手势是否可用。
+
+另外，`onPageCalled`、`onPageBuilt`和`onPageDisposed`钩子允许我们在页面生命周期的不同阶段插入自定义逻辑。这些可以用来做诸如状态管理、分析或者日志记录之类的功能。
+
+
+请注意，`onPageCalled`、`onPageBuilt`、`onPageDisposed`这些钩子并不常用，且在官方文档中文档化得不多，在使用时应小心谨慎。通常情况下，你可能只需要`Bindings`和`middlewares`即足够满足大多数需求。 
+
+在GetX中，如果你想要为所有路由设置一个共通的`onPageCalled`函数，你可以创建一个自定义的`GetMiddleware`并添加到所有`GetPage`的`middlewares`属性中。这个中间件将在页面被调用（即在路由跳转之前）时执行你定义的逻辑。
+
+创建一个继承自`GetMiddleware`的自定义中间件类，并重写`onPageCalled`方法。
+
+```dart
+import 'package:get/get.dart';
+
+class GlobalMiddleware extends GetMiddleware {
+  @override
+  RouteSettings? redirect(String? route) {
+    // 在这里添加你想要在每个页面调用前执行的逻辑
+    print("GlobalMiddleware: 页面即将被调用，路由：$route");
+    // 返回null意味着不重定向，继续执行后续操作
+    return null;
+  }
+}
+```
+
+在创建`GetPage`对象时，将自定义的中间件加入到`middlewares`列表中。
+
+```dart
+GetPage(
+  name: '/example',
+  page: () => ExamplePage(),
+  middlewares: [GlobalMiddleware()], // 添加你的全局中间件
+);
+```
+
+如果你有多个路由，并且想要应用同一个中间件，最简单的方法是创建一个包含你所有路由的列表，并为每个路由添加相同的中间件。
+
+```dart
+final globalMiddleware = GlobalMiddleware();
+
+final List<GetPage> getPages = [
+  GetPage(
+    name: '/home',
+    page: () => HomePage(),
+    middlewares: [globalMiddleware],
+  ),
+  GetPage(
+    name: '/profile',
+    page: () => ProfilePage(),
+    middlewares: [globalMiddleware],
+  ),
+  // ... 更多路由
+];
+```
+
+如果你不想在每个`GetPage`中都手动添加中间件，你可以考虑创建一个函数，该函数接收页面和路由名称，并返回一个包含全局中间件的`GetPage`。
+
+```dart
+GetPage createGetPage(String name, Widget Function() page) {
+  return GetPage(
+    name: name,
+    page: page,
+    middlewares: [globalMiddleware],
+  );
+}
+
+final List<GetPage> getPages = [
+  createGetPage('/home', () => HomePage()),
+  createGetPage('/profile', () => ProfilePage()),
+  // ... 更多路由
+];
+```
+
+使用上面的方法，你可以确保所有的路由导航都会执行通过中间件定义的共通逻辑。 
+
 ### 3、依赖管理：
 
 GetX对依赖管理提供了很好的解决方案，可以非常方便地获取数据或者对象。 依赖管理主要是通过Get.put(), Get.find()和Get.lazyPut()等方法来实现的。第一次使用某个 Controller 时需要使用`Get.put()`进行初始化，后续再使用同一个 Controller 就不需要再进行初始化，直接通过`Get.find()`来获取实例就可以了。
