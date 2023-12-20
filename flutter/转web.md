@@ -90,3 +90,5 @@ flutter build web --web-renderer html
 ```
 
  Flutter Web 提供了两种渲染器供开发者选择：HTML 渲染器（也称为 DomCanvas）和 CanvasKit 渲染器。这两种渲染器在渲染 Flutter Web 应用时采用了不同的方式来绘制 UI，它们各自有不同的优点和缺点。
+
+ https://docs.flutter.dev/deployment/web
